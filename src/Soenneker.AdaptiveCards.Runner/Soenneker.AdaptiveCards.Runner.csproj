@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <Platforms>AnyCPU</Platforms>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup>
+    <Description>Generates Adaptive Cards C# DTOs from the official JSON schema</Description>
+    <Version Condition="'$(BUILD_VERSION)' == ''">4.0.0</Version>
+    <Version Condition="'$(BUILD_VERSION)' != ''">$(BUILD_VERSION)</Version>
+    <AssemblyName>Soenneker.AdaptiveCards.Runner</AssemblyName>
+    <Copyright>Copyright © 2026 Jake Soenneker</Copyright>
+    <Authors>Jake Soenneker</Authors>
+    <Company>https://soenneker.com</Company>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPackable>false</IsPackable>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+    <PackageReference Include="Soenneker.GitHub.Client.Http" Version="4.0.1484" />
+    <PackageReference Include="Soenneker.Extensions.LoggerConfiguration" Version="4.0.1395" />
+    <PackageReference Include="Soenneker.Managers.Runners" Version="4.0.2550" />
+    <PackageReference Include="Soenneker.Utils.File.Download" Version="4.0.1775" />
+  </ItemGroup>
+  <ItemGroup Condition="Exists('..\..\..\..\JsonSchema\soenneker.jsonschema.tocsharp\src\Soenneker.JsonSchema.ToCSharp\Soenneker.JsonSchema.ToCSharp.csproj')">
+    <ProjectReference Include="..\..\..\..\JsonSchema\soenneker.jsonschema.tocsharp\src\Soenneker.JsonSchema.ToCSharp\Soenneker.JsonSchema.ToCSharp.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="!Exists('..\..\..\..\JsonSchema\soenneker.jsonschema.tocsharp\src\Soenneker.JsonSchema.ToCSharp\Soenneker.JsonSchema.ToCSharp.csproj')">
+    <PackageReference Include="Soenneker.JsonSchema.ToCSharp" Version="4.0.0" />
+  </ItemGroup>
+</Project>
