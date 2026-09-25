@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
 using Soenneker.AdaptiveCards.Runner.Utils;
 using Soenneker.GitHub.Client.Http.Abstract;
-using TUnit.Core;
 
 namespace Soenneker.AdaptiveCards.Runner.Tests;
 

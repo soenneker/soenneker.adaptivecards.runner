@@ -1,14 +1,9 @@
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Soenneker.Managers.Runners.Abstract;
-using Soenneker.Utils.Directory.Abstract;
-using Soenneker.Utils.File.Abstract;
-using Soenneker.Utils.File.Download.Abstract;
 using Soenneker.AdaptiveCards.Runner.Utils.Abstract;
 
 namespace Soenneker.AdaptiveCards.Runner;

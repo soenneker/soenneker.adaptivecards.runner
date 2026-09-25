@@ -9,9 +9,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Soenneker.AdaptiveCards.Runner.Utils;
 using Soenneker.AdaptiveCards.Runner.Utils.Abstract;
-using TUnit.Core;
 using Soenneker.JsonSchema.ToCSharp.Abstract;
-using Soenneker.JsonSchema.ToCSharp.Registrars;
 
 namespace Soenneker.AdaptiveCards.Runner.Tests;
 
