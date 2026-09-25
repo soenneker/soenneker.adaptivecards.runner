@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using Soenneker.Git.Util.Registrars;
+using Soenneker.Utils.Dotnet.Registrars;
 using Soenneker.GitHub.Client.Http.Registrars;
 using Soenneker.JsonSchema.ToCSharp.Registrars;
 using Soenneker.AdaptiveCards.Runner.Utils;
@@ -23,6 +25,9 @@ public static class Startup
     {
         services.AddHostedService<ConsoleHostedService>()
                 .AddSingleton<IFileOperationsUtil, FileOperationsUtil>()
+                .AddSingleton<IDtosRepositoryUtil, DtosRepositoryUtil>()
+                .AddGitUtilAsSingleton()
+                .AddDotnetUtilAsSingleton()
                 .AddSingleton<IAdaptiveCardSchemaUtil, AdaptiveCardSchemaUtil>()
                 .AddGitHubHttpClientAsSingleton()
                 .AddJsonSchemaToCSharpAsSingleton()

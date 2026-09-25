@@ -1,81 +1,109 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
+using System.Linq;
 using System.Threading;
-using Microsoft.Extensions.Configuration;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Soenneker.AdaptiveCards.Runner.Utils;
 using Soenneker.AdaptiveCards.Runner.Utils.Abstract;
+using Soenneker.JsonSchema.ToCSharp;
 using Soenneker.JsonSchema.ToCSharp.Abstract;
+using TUnit.Core;
 
 namespace Soenneker.AdaptiveCards.Runner.Tests;
 
 public sealed class AdaptiveCardsRunnerTests
 {
     [Test]
-    public async Task HostedServicesResolveAndGenerateDeterministically()
+    public async Task HostedServiceGeneratesAndUpdatesTheDtoRepository()
     {
-        string output = Path.Combine(Path.GetTempPath(), "adaptivecards-" + Guid.NewGuid().ToString("N"));
-        try
-        {
-            using IHost host = Program.CreateHostBuilder(["--output", output])
-                .ConfigureServices(services => services.AddSingleton<IAdaptiveCardSchemaUtil>(new StubSchemaUtil("""{"$ref":"#/definitions/AdaptiveCard","definitions":{"AdaptiveCard":{"type":"object","properties":{"type":{"enum":["AdaptiveCard"]}}}}}""")))
-                .Build();
-            bool registered = false;
-            foreach (IHostedService service in host.Services.GetServices<IHostedService>())
-                registered |= service is ConsoleHostedService;
-            if (!registered) throw new Exception("Runner hosted service is not registered.");
-            IFileOperationsUtil operations = host.Services.GetRequiredService<IFileOperationsUtil>();
-            await operations.Process();
-            var generated = new Dictionary<string, string>();
-            foreach (string file in Directory.GetFiles(output, "*.cs", SearchOption.AllDirectories))
-                generated.Add(file, await File.ReadAllTextAsync(file));
-            if (!File.Exists(Path.Combine(output, "Models", "AdaptiveCard.cs")) || !File.Exists(Path.Combine(output, "SchemaJsonContext.cs")))
-                throw new Exception("Soenneker.JsonSchema.ToCSharp output is missing.");
-            await operations.Process();
-            foreach ((string file, string content) in generated)
-                if (await File.ReadAllTextAsync(file) != content) throw new Exception("Generation is not deterministic.");
-        }
-        finally
-        {
-            if (Directory.Exists(output)) Directory.Delete(output, true);
-        }
+        var repository = new RecordingRepository();
+        using IHost host = Program.CreateHostBuilder([])
+            .ConfigureServices(services =>
+            {
+                services.AddSingleton<IDtosRepositoryUtil>(repository);
+                services.AddSingleton<IAdaptiveCardSchemaUtil>(new StubSchemaUtil("""{"$ref":"#/definitions/AdaptiveCard","definitions":{"AdaptiveCard":{"type":"object","properties":{"type":{"enum":["AdaptiveCard"]}}}}}"""));
+            }).Build();
+        if (!host.Services.GetServices<IHostedService>().Any(service => service is ConsoleHostedService))
+            throw new Exception("Runner hosted service is not registered.");
+        IFileOperationsUtil operations = host.Services.GetRequiredService<IFileOperationsUtil>();
+        await operations.Process();
+        JsonSchemaToCSharpResult first = repository.Result ?? throw new Exception("DTO repository was not updated.");
+        if (!first.Files.ContainsKey("Models/AdaptiveCard.cs") || !first.Files.ContainsKey("SchemaJsonContext.cs"))
+            throw new Exception("Soenneker.JsonSchema.ToCSharp output is missing.");
+        await operations.Process();
+        foreach ((string file, string content) in first.Files)
+            if (repository.Result!.Files[file] != content) throw new Exception("Generation is not deterministic.");
     }
 
     [Test]
-    public async Task InvalidSchemaDoesNotOverwriteOutput()
+    public async Task InvalidSchemaDoesNotUpdateTheRepository()
     {
-        string directory = Path.Combine(Path.GetTempPath(), "adaptivecards-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(directory);
-        
-        string output = Path.Combine(directory, "Models.cs");
+        using IHost host = Program.CreateHostBuilder([]).Build();
+        var repository = new RecordingRepository();
+        var operations = new FileOperationsUtil(host.Services.GetRequiredService<IJsonSchemaToCSharp>(),
+            new StubSchemaUtil("{}"), repository, NullLogger<FileOperationsUtil>.Instance);
+        bool rejected = false;
+        try { await operations.Process(); }
+        catch (ArgumentException) { rejected = true; }
+        if (!rejected || repository.Result is not null)
+            throw new Exception("Invalid schema reached the DTO repository.");
+    }
+
+    [Test]
+    public async Task LocalRepositoryUpdateRemovesObsoleteGeneratedFilesAndPreservesHandwrittenFiles()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "adaptivecards-test-" + Guid.NewGuid().ToString("N"));
+        string project = Path.Combine(root, "src", Constants.Library);
+        string generated = Path.Combine(project, "Generated");
+        Directory.CreateDirectory(generated);
         try
         {
-            
-            await File.WriteAllTextAsync(output, "keep");
-            IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
-                { ["output"] = directory }).Build();
-            using IHost host = Program.CreateHostBuilder([]).Build();
-            var operations = new FileOperationsUtil(host.Services.GetRequiredService<IJsonSchemaToCSharp>(), new StubSchemaUtil("{}"), configuration, NullLogger<FileOperationsUtil>.Instance);
-            bool rejected = false;
-            try { await operations.Process(); }
-            catch (ArgumentException) { rejected = true; }
-            if (!rejected || await File.ReadAllTextAsync(output) != "keep")
-                throw new Exception("Invalid input changed the output or returned success.");
+            await File.WriteAllTextAsync(Path.Combine(project, Constants.Library + ".csproj"),
+                "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>");
+            string obsolete = Path.Combine(generated, "Obsolete.cs");
+            string handwritten = Path.Combine(generated, "Handwritten.cs");
+            await File.WriteAllTextAsync(obsolete, "// <auto-generated/>\npublic class Obsolete { }");
+            await File.WriteAllTextAsync(handwritten, "public class Handwritten { }");
+            using IHost host = Program.CreateHostBuilder(["--Dtos:Directory", root]).Build();
+            IDtosRepositoryUtil repository = host.Services.GetRequiredService<IDtosRepositoryUtil>();
+            var result = new JsonSchemaToCSharpResult(new Dictionary<string, string>
+            {
+                ["Current.cs"] = "// <auto-generated/>\npublic class Current { }"
+            }, "Current", new Dictionary<string, string>(), []);
+            await repository.Update(result);
+            string current = Path.Combine(generated, "Current.cs");
+            if (File.Exists(obsolete) || !File.Exists(current) || await File.ReadAllTextAsync(handwritten) != "public class Handwritten { }")
+                throw new Exception("DTO sources were not reconciled correctly.");
+            DateTime timestamp = File.GetLastWriteTimeUtc(current);
+            await repository.Update(result);
+            if (File.GetLastWriteTimeUtc(current) != timestamp)
+                throw new Exception("An unchanged source was rewritten.");
         }
         finally
         {
-
-            File.Delete(output);
-            Directory.Delete(directory);
+            string path = Path.GetFullPath(root);
+            if (!path.StartsWith(Path.GetFullPath(Path.GetTempPath()) + "adaptivecards-test-", StringComparison.OrdinalIgnoreCase))
+                throw new IOException("Unexpected test cleanup path.");
+            Directory.Delete(path, true);
         }
     }
+
     private sealed class StubSchemaUtil(string json) : IAdaptiveCardSchemaUtil
     {
         public ValueTask<string> GetLatest(CancellationToken cancellationToken = default) => ValueTask.FromResult(json);
-    }}
+    }
 
-
+    private sealed class RecordingRepository : IDtosRepositoryUtil
+    {
+        public JsonSchemaToCSharpResult? Result { get; private set; }
+        public ValueTask Update(JsonSchemaToCSharpResult result, CancellationToken cancellationToken = default)
+        {
+            Result = result;
+            return ValueTask.CompletedTask;
+        }
+    }
+}
