@@ -54,6 +54,16 @@ public sealed class AdaptiveCardSchemaUtilTests
         throw new Exception("A missing latest schema must fail without a stale fallback.");
     }
 
+    [Test]
+    public async ValueTask RejectedCredentialsRetryWithoutAuthorization()
+    {
+        using var provider = new FakeGitHubClient("""[{"name":"1.6.0","type":"dir"}]""");
+        provider.Handler.RejectAuthorization = true;
+        var util = new AdaptiveCardSchemaUtil(provider, NullLogger<AdaptiveCardSchemaUtil>.Instance);
+        if (await util.GetLatest() != "schema-content" || provider.Handler.Paths.Count != 6)
+            throw new Exception("Rejected credentials must retry each public request anonymously.");
+    }
+
     private sealed class FakeGitHubClient : IGitHubHttpClient
     {
         public FakeHandler Handler { get; }
@@ -62,6 +72,7 @@ public sealed class AdaptiveCardSchemaUtilTests
         {
             Handler = new FakeHandler(folders, fileStatus);
             _client = new HttpClient(Handler) { BaseAddress = new Uri("https://api.github.com/") };
+            _client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", "test-token");
         }
         public ValueTask<HttpClient> Get(CancellationToken cancellationToken = default) => ValueTask.FromResult(_client);
         public ValueTask<HttpClient> GetForUpload(CancellationToken cancellationToken = default) => Get(cancellationToken);
@@ -72,12 +83,15 @@ public sealed class AdaptiveCardSchemaUtilTests
     private sealed class FakeHandler(string folders, HttpStatusCode fileStatus) : HttpMessageHandler
     {
         public List<string> Paths { get; } = [];
+        public bool RejectAuthorization { get; set; }
         private int _commit;
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             string path = request.RequestUri!.PathAndQuery;
             Paths.Add(path);
+            if (RejectAuthorization && !string.IsNullOrEmpty(request.Headers.Authorization?.ToString()))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Forbidden) { Content = new StringContent("Forbidden") });
             string content;
             HttpStatusCode status = HttpStatusCode.OK;
             if (path.Contains("/commits?", StringComparison.Ordinal))

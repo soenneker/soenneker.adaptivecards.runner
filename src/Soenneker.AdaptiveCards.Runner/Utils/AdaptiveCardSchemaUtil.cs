@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -22,14 +23,14 @@ public sealed class AdaptiveCardSchemaUtil(IGitHubHttpClient gitHubHttpClient, I
     {
         HttpClient client = await gitHubHttpClient.Get(cancellationToken);
         // Resolve HEAD first so the version listing and file contents always come from the same revision.
-        using JsonDocument commits = JsonDocument.Parse(await client.GetStringAsync($"{_repository}/commits?per_page=1", cancellationToken));
+        using JsonDocument commits = JsonDocument.Parse(await GetString(client, $"{_repository}/commits?per_page=1", cancellationToken));
         if (commits.RootElement.GetArrayLength() == 0)
             throw new InvalidDataException("The AdaptiveCards repository has no commits.");
         string commit = commits.RootElement[0].GetProperty("sha").GetString()
             ?? throw new InvalidDataException("GitHub did not return a commit SHA.");
         string reference = Uri.EscapeDataString(commit);
 
-        using JsonDocument folders = JsonDocument.Parse(await client.GetStringAsync($"{_repository}/contents/schemas?ref={reference}", cancellationToken));
+        using JsonDocument folders = JsonDocument.Parse(await GetString(client, $"{_repository}/contents/schemas?ref={reference}", cancellationToken));
         System.Version? latest = null;
         string? latestFolder = null;
         foreach (JsonElement entry in folders.RootElement.EnumerateArray())
@@ -47,7 +48,7 @@ public sealed class AdaptiveCardSchemaUtil(IGitHubHttpClient gitHubHttpClient, I
             throw new InvalidDataException("No versioned Adaptive Cards schema directories were found.");
 
         string path = $"schemas/{latestFolder}/adaptive-card.json";
-        using JsonDocument file = JsonDocument.Parse(await client.GetStringAsync(
+        using JsonDocument file = JsonDocument.Parse(await GetString(client,
             $"{_repository}/contents/schemas/{Uri.EscapeDataString(latestFolder)}/adaptive-card.json?ref={reference}", cancellationToken));
         if (file.RootElement.GetProperty("encoding").GetString() != "base64")
             throw new InvalidDataException($"GitHub returned an unsupported encoding for {path}.");
@@ -58,4 +59,31 @@ public sealed class AdaptiveCardSchemaUtil(IGitHubHttpClient gitHubHttpClient, I
         Version = latest!.ToString();
         return schema;
     }
+
+    private async Task<string> GetString(HttpClient client, string path, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, path);
+        using HttpResponseMessage response = await client.SendAsync(request, cancellationToken);
+        if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized)
+        {
+            logger.LogWarning("GitHub rejected authenticated schema access ({StatusCode}); retrying the public repository anonymously", response.StatusCode);
+            using var anonymousRequest = new HttpRequestMessage(HttpMethod.Get, path);
+            // An explicit empty header prevents HttpClient from copying its default bearer token.
+            anonymousRequest.Headers.TryAddWithoutValidation("Authorization", string.Empty);
+            using HttpResponseMessage anonymousResponse = await client.SendAsync(anonymousRequest, cancellationToken);
+            return await ReadResponse(anonymousResponse, path, cancellationToken);
+        }
+
+        return await ReadResponse(response, path, cancellationToken);
+    }
+
+    private static async Task<string> ReadResponse(HttpResponseMessage response, string path, CancellationToken cancellationToken)
+    {
+        string content = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException($"GitHub schema request '{path}' failed with {(int)response.StatusCode} ({response.ReasonPhrase}): {content}",
+                null, response.StatusCode);
+        return content;
+    }
+
 }
