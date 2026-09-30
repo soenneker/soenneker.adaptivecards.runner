@@ -16,7 +16,7 @@ namespace Soenneker.AdaptiveCards.Runner.Tests;
 public sealed class AdaptiveCardSchemaUtilTests
 {
     [Test]
-    public async Task SelectsHighestVersionAndPinsRequestsToLatestCommit()
+    public async ValueTask SelectsHighestVersionAndPinsRequestsToLatestCommit()
     {
         const string folders = """[{"name":"1.9.0","type":"dir"},{"name":"src","type":"dir"},{"name":"9.0.0","type":"file"},{"name":"1.10.0","type":"dir"},{"name":"1.2.0","type":"dir"}]""";
         using var provider = new FakeGitHubClient(folders);
@@ -32,7 +32,7 @@ public sealed class AdaptiveCardSchemaUtilTests
     }
 
     [Test]
-    public async Task MissingVersionDirectoriesFail()
+    public async ValueTask MissingVersionDirectoriesFail()
     {
         using var provider = new FakeGitHubClient("""[{"name":"src","type":"dir"}]""");
         var util = new AdaptiveCardSchemaUtil(provider, NullLogger<AdaptiveCardSchemaUtil>.Instance);
@@ -42,7 +42,7 @@ public sealed class AdaptiveCardSchemaUtilTests
     }
 
     [Test]
-    public async Task MissingLatestSchemaDoesNotFallBackToAnOlderVersion()
+    public async ValueTask MissingLatestSchemaDoesNotFallBackToAnOlderVersion()
     {
         using var provider = new FakeGitHubClient("""[{"name":"1.5.0","type":"dir"},{"name":"1.6.0","type":"dir"}]""", HttpStatusCode.NotFound);
         var util = new AdaptiveCardSchemaUtil(provider, NullLogger<AdaptiveCardSchemaUtil>.Instance);

@@ -18,7 +18,7 @@ namespace Soenneker.AdaptiveCards.Runner.Tests;
 public sealed class AdaptiveCardsRunnerTests
 {
     [Test]
-    public async Task HostedServiceGeneratesAndUpdatesTheDtoRepository()
+    public async ValueTask HostedServiceGeneratesAndUpdatesTheDtoRepository()
     {
         var repository = new RecordingRepository();
         using IHost host = Program.CreateHostBuilder([])
@@ -40,7 +40,7 @@ public sealed class AdaptiveCardsRunnerTests
     }
 
     [Test]
-    public async Task InvalidSchemaDoesNotUpdateTheRepository()
+    public async ValueTask InvalidSchemaDoesNotUpdateTheRepository()
     {
         using IHost host = Program.CreateHostBuilder([]).Build();
         var repository = new RecordingRepository();
@@ -54,7 +54,7 @@ public sealed class AdaptiveCardsRunnerTests
     }
 
     [Test]
-    public async Task LocalRepositoryUpdateRemovesObsoleteGeneratedFilesAndPreservesHandwrittenFiles()
+    public async ValueTask LocalRepositoryUpdateRemovesObsoleteGeneratedFilesAndPreservesHandwrittenFiles()
     {
         string root = Path.Combine(Path.GetTempPath(), "adaptivecards-test-" + Guid.NewGuid().ToString("N"));
         string project = Path.Combine(root, "src", Constants.Library);
