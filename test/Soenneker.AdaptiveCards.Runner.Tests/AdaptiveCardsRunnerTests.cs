@@ -94,7 +94,7 @@ public sealed class AdaptiveCardsRunnerTests
 
     private sealed class StubSchemaUtil(string json) : IAdaptiveCardSchemaUtil
     {
-        public string? UpdateDetails => "1.6 from upstream test";
+        public string? Version => "1.6";
         public ValueTask<string> GetLatest(CancellationToken cancellationToken = default) => ValueTask.FromResult(json);
     }
 

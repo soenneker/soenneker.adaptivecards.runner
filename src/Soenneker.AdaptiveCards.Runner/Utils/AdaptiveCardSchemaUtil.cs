@@ -14,7 +14,7 @@ namespace Soenneker.AdaptiveCards.Runner.Utils;
 public sealed class AdaptiveCardSchemaUtil(IGitHubHttpClient gitHubHttpClient, ILogger<AdaptiveCardSchemaUtil> logger)
     : IAdaptiveCardSchemaUtil
 {
-    public string? UpdateDetails { get; private set; }
+    public string? Version { get; private set; }
 
     private const string _repository = "repos/microsoft/AdaptiveCards";
 
@@ -55,7 +55,7 @@ public sealed class AdaptiveCardSchemaUtil(IGitHubHttpClient gitHubHttpClient, I
             ?? throw new InvalidDataException($"GitHub returned no content for {path}.");
         string schema = Encoding.UTF8.GetString(Convert.FromBase64String(content));
         logger.LogInformation("Using Adaptive Cards schema {Version} from {Path} at commit {Commit}", latest, path, commit);
-        UpdateDetails = $"{latest} from upstream {commit}";
+        Version = latest!.ToString();
         return schema;
     }
 }

@@ -40,6 +40,6 @@ public sealed class FileOperationsUtil(
         foreach (string diagnostic in result.Diagnostics)
             logger.LogWarning("Schema generation: {Diagnostic}", diagnostic);
 
-        await dtosRepositoryUtil.Update(result, cancellationToken, schemaUtil.UpdateDetails);
+        await dtosRepositoryUtil.Update(result, cancellationToken, schemaUtil.Version);
     }
 }
