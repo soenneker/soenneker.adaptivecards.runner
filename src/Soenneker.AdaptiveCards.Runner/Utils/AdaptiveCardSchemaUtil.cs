@@ -30,12 +30,12 @@ public sealed class AdaptiveCardSchemaUtil(IGitHubHttpClient gitHubHttpClient, I
         string reference = Uri.EscapeDataString(commit);
 
         using JsonDocument folders = JsonDocument.Parse(await client.GetStringAsync($"{_repository}/contents/schemas?ref={reference}", cancellationToken));
-        Version? latest = null;
+        System.Version? latest = null;
         string? latestFolder = null;
         foreach (JsonElement entry in folders.RootElement.EnumerateArray())
         {
             string? name = entry.GetProperty("name").GetString();
-            if (entry.GetProperty("type").GetString() != "dir" || !Version.TryParse(name, out Version? version))
+            if (entry.GetProperty("type").GetString() != "dir" || !System.Version.TryParse(name, out System.Version? version))
                 continue;
             if (latest is null || version > latest)
             {
