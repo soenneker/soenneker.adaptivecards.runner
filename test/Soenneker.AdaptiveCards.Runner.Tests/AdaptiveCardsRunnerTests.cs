@@ -94,13 +94,14 @@ public sealed class AdaptiveCardsRunnerTests
 
     private sealed class StubSchemaUtil(string json) : IAdaptiveCardSchemaUtil
     {
+        public string? UpdateDetails => "1.6 from upstream test";
         public ValueTask<string> GetLatest(CancellationToken cancellationToken = default) => ValueTask.FromResult(json);
     }
 
     private sealed class RecordingRepository : IDtosRepositoryUtil
     {
         public JsonSchemaToCSharpResult? Result { get; private set; }
-        public ValueTask Update(JsonSchemaToCSharpResult result, CancellationToken cancellationToken = default)
+        public ValueTask Update(JsonSchemaToCSharpResult result, CancellationToken cancellationToken = default, string? updateDetails = null)
         {
             Result = result;
             return ValueTask.CompletedTask;

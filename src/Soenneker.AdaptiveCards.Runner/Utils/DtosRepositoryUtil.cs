@@ -17,7 +17,7 @@ namespace Soenneker.AdaptiveCards.Runner.Utils;
 public sealed class DtosRepositoryUtil(IGitUtil gitUtil, IDotnetUtil dotnetUtil, IDirectoryUtil directoryUtil,
     IConfiguration configuration, ILogger<DtosRepositoryUtil> logger) : IDtosRepositoryUtil
 {
-    public async ValueTask Update(JsonSchemaToCSharpResult result, CancellationToken cancellationToken = default)
+    public async ValueTask Update(JsonSchemaToCSharpResult result, CancellationToken cancellationToken = default, string? updateDetails = null)
     {
         string? configuredDirectory = configuration["Dtos:Directory"];
         bool temporary = string.IsNullOrWhiteSpace(configuredDirectory);
@@ -83,7 +83,7 @@ public sealed class DtosRepositoryUtil(IGitUtil gitUtil, IDotnetUtil dotnetUtil,
                     return;
                 string name = configuration["Git:Name"] ?? throw new InvalidOperationException("GIT__NAME is not set.");
                 string email = configuration["Git:Email"] ?? throw new InvalidOperationException("GIT__EMAIL is not set.");
-                await gitUtil.CommitAndPush(repository!, "Update Adaptive Cards DTOs from the latest schema", token!, name, email, cancellationToken);
+                await gitUtil.CommitAndPush(repository!, string.IsNullOrWhiteSpace(updateDetails) ? "Update Adaptive Cards DTOs from the latest schema" : $"Update Adaptive Cards DTOs ({updateDetails})", token!, name, email, cancellationToken);
                 logger.LogInformation("Updated and pushed {Library}", Constants.Library);
             }
             else

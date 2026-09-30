@@ -9,5 +9,6 @@ public interface IDtosRepositoryUtil
 {
     /// <summary>Reconciles generated files and builds the DTO library. A temporary clone is committed and pushed;
     /// a checkout supplied through Dtos:Directory is updated locally without committing unrelated work.</summary>
-    ValueTask Update(JsonSchemaToCSharpResult result, CancellationToken cancellationToken = default);
+    /// <param name="updateDetails">Version and upstream commit of the source schema.</param>
+    ValueTask Update(JsonSchemaToCSharpResult result, CancellationToken cancellationToken = default, string? updateDetails = null);
 }
