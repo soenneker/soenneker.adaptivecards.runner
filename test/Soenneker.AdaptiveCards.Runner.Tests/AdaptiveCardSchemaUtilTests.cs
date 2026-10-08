@@ -16,37 +16,37 @@ namespace Soenneker.AdaptiveCards.Runner.Tests;
 public sealed class AdaptiveCardSchemaUtilTests
 {
     [Test]
-    public async ValueTask SelectsHighestVersionAndPinsRequestsToLatestCommit()
+    public async ValueTask SelectsHighestVersionAndPinsRequestsToLatestCommit(CancellationToken cancellationToken)
     {
         const string folders = """[{"name":"1.9.0","type":"dir"},{"name":"src","type":"dir"},{"name":"9.0.0","type":"file"},{"name":"1.10.0","type":"dir"},{"name":"1.2.0","type":"dir"}]""";
         using var provider = new FakeGitHubClient(folders);
         var util = new AdaptiveCardSchemaUtil(provider, NullLogger<AdaptiveCardSchemaUtil>.Instance);
-        string schema = await util.GetLatest();
+        string schema = await util.GetLatest(cancellationToken: cancellationToken);
         if (schema != "schema-content" || provider.Handler.Paths.Count != 3
             || provider.Handler.Paths[1] != "/repos/microsoft/AdaptiveCards/contents/schemas?ref=commit1"
             || provider.Handler.Paths[2] != "/repos/microsoft/AdaptiveCards/contents/schemas/1.10.0/adaptive-card.json?ref=commit1")
             throw new Exception("Did not select the latest numeric directory at a consistent commit.");
-        await util.GetLatest();
+        await util.GetLatest(cancellationToken: cancellationToken);
         if (provider.Handler.Paths.Count != 6 || !provider.Handler.Paths[5].EndsWith("?ref=commit2", StringComparison.Ordinal))
             throw new Exception("A subsequent run did not fetch the latest commit.");
     }
 
     [Test]
-    public async ValueTask MissingVersionDirectoriesFail()
+    public async ValueTask MissingVersionDirectoriesFail(CancellationToken cancellationToken)
     {
         using var provider = new FakeGitHubClient("""[{"name":"src","type":"dir"}]""");
         var util = new AdaptiveCardSchemaUtil(provider, NullLogger<AdaptiveCardSchemaUtil>.Instance);
-        try { await util.GetLatest(); }
+        try { await util.GetLatest(cancellationToken: cancellationToken); }
         catch (InvalidDataException) { return; }
         throw new Exception("A missing versioned schema must fail.");
     }
 
     [Test]
-    public async ValueTask MissingLatestSchemaDoesNotFallBackToAnOlderVersion()
+    public async ValueTask MissingLatestSchemaDoesNotFallBackToAnOlderVersion(CancellationToken cancellationToken)
     {
         using var provider = new FakeGitHubClient("""[{"name":"1.5.0","type":"dir"},{"name":"1.6.0","type":"dir"}]""", HttpStatusCode.NotFound);
         var util = new AdaptiveCardSchemaUtil(provider, NullLogger<AdaptiveCardSchemaUtil>.Instance);
-        try { await util.GetLatest(); }
+        try { await util.GetLatest(cancellationToken: cancellationToken); }
         catch (HttpRequestException)
         {
             if (provider.Handler.Paths.Count == 3) return;
@@ -55,12 +55,12 @@ public sealed class AdaptiveCardSchemaUtilTests
     }
 
     [Test]
-    public async ValueTask RejectedCredentialsRetryWithoutAuthorization()
+    public async ValueTask RejectedCredentialsRetryWithoutAuthorization(CancellationToken cancellationToken)
     {
         using var provider = new FakeGitHubClient("""[{"name":"1.6.0","type":"dir"}]""");
         provider.Handler.RejectAuthorization = true;
         var util = new AdaptiveCardSchemaUtil(provider, NullLogger<AdaptiveCardSchemaUtil>.Instance);
-        if (await util.GetLatest() != "schema-content" || provider.Handler.Paths.Count != 6)
+        if (await util.GetLatest(cancellationToken: cancellationToken) != "schema-content" || provider.Handler.Paths.Count != 6)
             throw new Exception("Rejected credentials must retry each public request anonymously.");
     }
 
