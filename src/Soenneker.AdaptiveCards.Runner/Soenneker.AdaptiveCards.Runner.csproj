@@ -20,11 +20,11 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
-    <PackageReference Include="Soenneker.GitHub.Client.Http" Version="4.0.1506" />
-    <PackageReference Include="Soenneker.Extensions.LoggerConfiguration" Version="4.0.1419" />
-    <PackageReference Include="Soenneker.Managers.Runners" Version="4.0.2616" />
-    <PackageReference Include="Soenneker.Utils.File.Download" Version="4.0.1799" />
-    <PackageReference Include="Soenneker.JsonSchema.ToCSharp" Version="4.0.29" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+    <PackageReference Include="Soenneker.GitHub.Client.Http" Version="4.0.1512" />
+    <PackageReference Include="Soenneker.Extensions.LoggerConfiguration" Version="4.0.1425" />
+    <PackageReference Include="Soenneker.Managers.Runners" Version="4.0.2622" />
+    <PackageReference Include="Soenneker.Utils.File.Download" Version="4.0.1804" />
+    <PackageReference Include="Soenneker.JsonSchema.ToCSharp" Version="4.0.30" />
   </ItemGroup>
 </Project>
