@@ -24,7 +24,7 @@
     <PackageReference Include="Soenneker.GitHub.Client.Http" Version="4.0.1521" />
     <PackageReference Include="Soenneker.Extensions.LoggerConfiguration" Version="4.0.1437" />
     <PackageReference Include="Soenneker.Managers.Runners" Version="4.0.2630" />
-    <PackageReference Include="Soenneker.Utils.File.Download" Version="4.0.1812" />
+    <PackageReference Include="Soenneker.Utils.File.Download" Version="4.0.1813" />
     <PackageReference Include="Soenneker.JsonSchema.ToCSharp" Version="4.0.37" />
   </ItemGroup>
 </Project>
